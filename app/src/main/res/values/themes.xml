@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.ProjectDivaController" parent="android:Theme.Material.Light.NoActionBar" >
+    <!-- 全螢幕內容 -->
+        <!--<item name="android:windowFullscreen">true</item> -->
+</style>
+</resources>

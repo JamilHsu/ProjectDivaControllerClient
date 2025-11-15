@@ -1,0 +1,31 @@
+# Android Studio / IntelliJ
+*.iml
+.idea/
+.DS_Store
+
+# Local configuration
+local.properties
+
+# Gradle
+.gradle/
+build/
+
+# NDK / CMake / External builds
+.externalNativeBuild/
+.cxx/
+
+# Captures (Android Studio screenshots)
+captures/
+
+# Keystore files (避免洩露私鑰)
+*.jks
+*.keystore
+
+# APK / AAB outputs
+app/build/outputs/apk/
+app/build/outputs/bundle/
+app/release/
+app/debug/
+
+# Log files
+*.log
