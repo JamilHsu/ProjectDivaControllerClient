@@ -57,8 +57,10 @@ class TouchActivity : ComponentActivity() {
         scope.launch(Dispatchers.IO) {
             if (tcpClient?.connect() == true) {
                 sendScreenInfo()
-                runOnUiThread { statusText.text = "已連線，開始傳送觸控事件" }
-                showFourSections()
+                runOnUiThread {
+                    statusText.text = "已連線，開始傳送觸控事件"
+                    showFourSections()
+                }
             } else {
                 runOnUiThread {
                     statusText.text = "無法建立 TCP 連線"
