@@ -2,7 +2,6 @@ package com.example.projectdivacontroller
 
 import android.annotation.SuppressLint
 import android.content.res.Configuration
-import android.graphics.Color
 import android.graphics.Point
 import android.os.Build
 import android.os.Bundle
@@ -18,6 +17,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import kotlinx.coroutines.*
+import androidx.core.graphics.toColorInt
 
 class TouchActivity : ComponentActivity() {
 
@@ -28,7 +28,7 @@ class TouchActivity : ComponentActivity() {
     // 用來記錄上一次各 pointer 的狀態
     private val lastTouchStates = mutableMapOf<Int, Point>() // id -> (action, x, y)
 
-    @SuppressLint("ClickableViewAccessibility")
+    @SuppressLint("ClickableViewAccessibility", "SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_touch)
@@ -48,7 +48,7 @@ class TouchActivity : ComponentActivity() {
         tcpClient = TcpClient(ip, port) {
             // 若連線中斷，自動返回主畫面
             runOnUiThread {
-                statusText.text = "連線已中斷"
+                statusText.text = "Disconnected"
                 finishWithResult(RESULT_DISCONNECTED)
             }
         }
@@ -58,12 +58,11 @@ class TouchActivity : ComponentActivity() {
             if (tcpClient?.connect() == true) {
                 sendScreenInfo()
                 runOnUiThread {
-                    statusText.text = "已連線，開始傳送觸控事件"
                     showFourSections()
                 }
             } else {
                 runOnUiThread {
-                    statusText.text = "無法建立 TCP 連線"
+                    statusText.text = "Connecting...failed"
                     finishWithResult(RESULT_CONNECT_FAILED)
                 }
             }
@@ -140,7 +139,7 @@ class TouchActivity : ComponentActivity() {
 
         val colors = listOf("#00DDAA", "#FF66DD", "#44AAFF", "#FF2277")
         val images = listOf(
-            R.drawable.triangle, // 你可替換成自己的圖片名稱
+            R.drawable.triangle,
             R.drawable.square,
             R.drawable.x,
             R.drawable.o
@@ -157,7 +156,7 @@ class TouchActivity : ComponentActivity() {
         for (i in 0 until 4) {
             val iv = ImageView(this).apply {
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
-                setBackgroundColor(Color.parseColor(colors[i]))
+                setBackgroundColor(colors[i].toColorInt())
                 setImageResource(images[i])
                 scaleType = ImageView.ScaleType.FIT_CENTER // 保持比例、置中
                 adjustViewBounds = true

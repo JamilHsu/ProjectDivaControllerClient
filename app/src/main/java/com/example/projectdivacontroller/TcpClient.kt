@@ -26,7 +26,6 @@ class TcpClient(
             socket = Socket()
             socket!!.connect(InetSocketAddress(host, port), 1500)
 
-            // 關閉 Nagle Algorithm，立即傳送封包
             socket!!.tcpNoDelay = true
 
             output = socket!!.getOutputStream()
@@ -55,16 +54,26 @@ class TcpClient(
                     val reader = input ?: return@launch
                     val buffer = CharArray(1024)
                     while (isActive) {
-                        val len = reader.read(buffer)
+                        val len = reader.read(buffer, 0, 1023)
                         if (len == -1) break // 連線中斷
-                        //簡單假設只會收到PING
-                        //把PING改成PONG後原樣送回
-                        for(i in 0 until len){
-                            if(buffer[i] =='I'){
-                                buffer[i] = 'O'
+                        buffer[len] = 0.toChar()
+                        var end = 0
+                        do {
+                            val start = end
+                            while (end < len && buffer[end] != '\n') {
+                                ++end
                             }
-                        }
-                        send(String(buffer, 0, len))
+                            ++end
+                            when (buffer[start]) {
+                                'T' -> sendDelayTest()
+                                'P' -> {
+                                    buffer[start + 1] = 'O'
+                                    send(String(buffer, start, end))
+                                }
+
+                                else -> {}
+                            }
+                        } while (end < len)
                     }
                 } catch (_: Exception) {
                     onDisconnect?.invoke()
@@ -87,6 +96,13 @@ class TcpClient(
         } catch (_: Exception) { }
         sendJob?.cancel()
         scope.cancel()
+    }
+    //開始傳送
+    suspend fun sendDelayTest(){
+        repeat(100) {
+            send("T " + System.nanoTime().toString() + "\n")
+            delay(5)
+        }
     }
 }
 
