@@ -10,7 +10,6 @@ import kotlinx.coroutines.*
 import java.net.*
 
 
-
 const val RESULT_CONNECT_FAILED = 10000
 const val RESULT_DISCONNECTED = 10001
 
@@ -35,14 +34,15 @@ class MainActivity : ComponentActivity() {
     private val touchActivityLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        when (result.resultCode) {
-            RESULT_DISCONNECTED -> txtStatus.text = "連線已中斷Disconnected"
-            RESULT_CONNECT_FAILED -> txtStatus.text = "連線失敗Connection failed"
-            RESULT_CANCELED -> "已中斷連線Connection interrupted"
-            else -> txtStatus.text = result.resultCode.toString()
-        }
+        showMessage(
+            when (result.resultCode) {
+                RESULT_DISCONNECTED -> "連線已中斷Disconnected"
+                RESULT_CONNECT_FAILED -> "連線失敗Connection failed"
+                RESULT_CANCELED -> "已中斷連線Connection interrupted"
+                else -> result.resultCode.toString()
+            }
+        )
     }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,7 +67,7 @@ class MainActivity : ComponentActivity() {
                     return@setOnClickListener
                 }
                 if (port == null || port !in 1..65535) {
-                    showMessage("請輸入有效的連接埠號 (1–65535)\nInvalid Port")
+                    showMessage("請輸入有效的連接埠號\nInvalid Port")
                     return@setOnClickListener
                 }
 
@@ -85,7 +85,7 @@ class MainActivity : ComponentActivity() {
             if (usbIpRange==null)
                 {"Broadcast search server..."}
             else
-                {"Scanning for servers..."}
+                {"Scanning ${usbIpRange.cidr}..."}
 
 
         scope.launch {
@@ -98,7 +98,7 @@ class MainActivity : ComponentActivity() {
                 val (ip, port) = found
                 editIp.setText(ip)
                 editPort.setText(port.toString())
-                txtStatus.text = "Server found:$ip:$port"
+                txtStatus.text = "Server found: $ip:$port"
             } else {
                 txtStatus.text = "Server not found."
             }

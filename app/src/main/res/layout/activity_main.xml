@@ -17,6 +17,7 @@
         android:inputType="text"
         android:minHeight="48dp"
         android:text="127.0.0.1"
+        android:maxLength="15"
         tools:ignore="HardcodedText" />
 
     <EditText
@@ -26,6 +27,8 @@
         android:hint="Server Port"
         android:importantForAutofill="no"
         android:inputType="number"
+        android:maxLength="5"
+        android:minHeight="48dp"
         android:text="3939"
         tools:ignore="HardcodedText" />
 
