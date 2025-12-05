@@ -74,6 +74,7 @@ class MainActivity : ComponentActivity() {
                 connectToServer(ip, port)
             }
         }
+        startScan()
     }
 
     private fun startScan() {
@@ -85,7 +86,7 @@ class MainActivity : ComponentActivity() {
             if (usbIpRange==null)
                 {"Broadcast search server..."}
             else
-                {"Scanning ${usbIpRange.cidr}..."}
+                {"Scanning ${usbIpRange.ifaceName} ${usbIpRange.cidr}..."}
 
 
         scope.launch {
@@ -206,7 +207,7 @@ fun findUsbTetherIpRange(): IpRangeResult? {
         ni.interfaceAddresses.forEach { ia ->
             val addr = ia.address
             if (addr is Inet4Address && !addr.isLoopbackAddress) {
-                return makeResult(name, addr, ia.networkPrefixLength.toInt())
+                return makeResult(ni.name, addr, ia.networkPrefixLength.toInt())
             }
         }
     }
