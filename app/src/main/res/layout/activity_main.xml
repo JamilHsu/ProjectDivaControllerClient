@@ -1,58 +1,83 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:orientation="vertical"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:padding="20dp"
-    android:gravity="center_horizontal">
+    android:layout_height="match_parent">
 
-    <EditText
-        android:id="@+id/editIp"
+    <!-- 動態背景（最底層） -->
+    <com.example.projectdivacontroller.PercentageBackgroundView
+        android:id="@+id/backgroundView"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:digits="0123456789."
-        android:hint="Server IP"
-        android:importantForAutofill="no"
-        android:inputType="text"
-        android:minHeight="48dp"
-        android:text="127.0.0.1"
-        android:maxLength="15"
-        tools:ignore="HardcodedText" />
+        android:layout_height="match_parent" />
 
-    <EditText
-        android:id="@+id/editPort"
+    <!-- 你原本的 UI（疊在上面） -->
+    <LinearLayout
+        android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Server Port"
-        android:importantForAutofill="no"
-        android:inputType="number"
-        android:maxLength="5"
-        android:minHeight="48dp"
-        android:text="3939"
-        tools:ignore="HardcodedText" />
+        android:layout_height="match_parent"
+        android:padding="20dp"
+        android:gravity="center_horizontal">
 
-    <Button
-        android:id="@+id/btnScan"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textAllCaps="false"
-        android:text="自動搜尋伺服器Automatic search server"
-        tools:ignore="HardcodedText" />
+        <EditText
+            android:id="@+id/editIp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:digits="0123456789."
+            android:hint="Server IP"
+            android:importantForAutofill="no"
+            android:inputType="text"
+            android:minHeight="48dp"
+            android:text="127.0.0.1"
+            android:maxLength="15"
+            tools:ignore="HardcodedText" />
 
-    <Button
-        android:id="@+id/btnConnect"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textAllCaps="false"
-        android:text="連線Connect"
-        tools:ignore="HardcodedText" />
+        <EditText
+            android:id="@+id/editPort"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Server Port"
+            android:importantForAutofill="no"
+            android:inputType="number"
+            android:maxLength="5"
+            android:minHeight="48dp"
+            android:text="3939"
+            tools:ignore="HardcodedText" />
 
-    <TextView
-        android:id="@+id/txtStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="狀態：待機中/Status: idle"
-        android:paddingTop="10dp"
-        tools:ignore="HardcodedText" />
-</LinearLayout>
+        <Button
+            android:id="@+id/btnScan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAllCaps="false"
+            android:text="自動搜尋伺服器Automatic search server"
+            tools:ignore="HardcodedText" />
+
+        <Button
+            android:id="@+id/btnConnect"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAllCaps="false"
+            android:text="連線Connect"
+            tools:ignore="HardcodedText" />
+
+        <TextView
+            android:id="@+id/txtStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="狀態：待機中/Status: idle"
+            android:paddingTop="10dp"
+            tools:ignore="HardcodedText" />
+
+        <SeekBar
+            android:id="@+id/seekBar"
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:max="60" />
+        <TextView
+            android:id="@+id/txtSeekValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+
+    </LinearLayout>
+
+</FrameLayout>

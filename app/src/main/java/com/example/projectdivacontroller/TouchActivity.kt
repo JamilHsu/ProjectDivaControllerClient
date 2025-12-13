@@ -24,7 +24,7 @@ class TouchActivity : ComponentActivity() {
     private lateinit var statusText: TextView
     private var tcpClient: TcpClient? = null
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-
+    private var sliderHeightRatio = 0
     // 用來記錄上一次各 pointer 的狀態
     private val lastTouchStates = mutableMapOf<Int, Point>() // id -> (action, x, y)
 
@@ -44,6 +44,7 @@ class TouchActivity : ComponentActivity() {
 
         val ip = intent.getStringExtra("ip") ?: return
         val port = intent.getIntExtra("port", 0)
+        sliderHeightRatio = intent.getIntExtra("sliderHeightRatio",0)
 
         tcpClient = TcpClient(ip, port) {
             // 若連線中斷，自動返回主畫面
@@ -58,7 +59,7 @@ class TouchActivity : ComponentActivity() {
             if (tcpClient?.connect() == true) {
                 sendScreenInfo()
                 runOnUiThread {
-                    showFourSections()
+                    showFourSectionsWithYellowTop()
                 }
             } else {
                 runOnUiThread {
@@ -133,7 +134,7 @@ class TouchActivity : ComponentActivity() {
         }
 
     }
-    private fun showFourSections() {
+    private fun showFourSectionsWithYellowTop() {
         val root = findViewById<FrameLayout>(R.id.touchArea)
         root.removeAllViews()
 
@@ -145,6 +146,17 @@ class TouchActivity : ComponentActivity() {
             R.drawable.o
         )
 
+        // 1️⃣ 黃色區塊 (20% 高度)
+        val yellowView = View(this).apply {
+            setBackgroundColor("#FFFF00".toColorInt())
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                0 // 高度先設 0，後面 post 計算
+            )
+        }
+
+
+        // 2️⃣ 四等分水平 LinearLayout
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutParams = FrameLayout.LayoutParams(
@@ -158,24 +170,30 @@ class TouchActivity : ComponentActivity() {
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
                 setBackgroundColor(colors[i].toColorInt())
                 setImageResource(images[i])
-                scaleType = ImageView.ScaleType.FIT_CENTER // 保持比例、置中
+                scaleType = ImageView.ScaleType.FIT_CENTER
                 adjustViewBounds = true
             }
             layout.addView(iv)
         }
 
         root.addView(layout)
+        root.addView(yellowView)
+        // 3️⃣ 計算高度
+        root.post {
+            val yellowHeight = (root.height * sliderHeightRatio / 100)
 
-        // 可選：根據比例微調圖片尺寸
-        layout.post {
-            for (i in 0 until layout.childCount) {
-                val iv = layout.getChildAt(i) as ImageView
-                val size = minOf(iv.width, iv.height)
-                iv.layoutParams.width = size
-                iv.layoutParams.height = size
-            }
+            // 設定黃色高度
+            yellowView.layoutParams.height = yellowHeight
+            yellowView.requestLayout()
+
+            // 讓四等分 layout 下移
+            val lp = layout.layoutParams as FrameLayout.LayoutParams
+            lp.topMargin = yellowHeight
+            layout.layoutParams = lp
         }
+
     }
+
 
     private fun sendScreenInfo() {
         @Suppress("DEPRECATION")
@@ -188,7 +206,7 @@ class TouchActivity : ComponentActivity() {
         val ydpi = displayMetrics.ydpi
         val manufacturer = Build.MANUFACTURER   // 例如 "Samsung"
         val model = Build.MODEL                 // 例如 "SM-G9980"
-        val msg = "SCREEN: $width $height $xdpi $ydpi $manufacturer $model\n"
+        val msg = "SCREEN: $width $height $xdpi $ydpi $sliderHeightRatio $manufacturer $model\n"
         tcpClient?.send(msg)
     }
 
@@ -205,7 +223,7 @@ class TouchActivity : ComponentActivity() {
     }
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        showFourSections()
+        showFourSectionsWithYellowTop()
         sendScreenInfo()
     }
 }

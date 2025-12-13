@@ -24,6 +24,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var btnScan: Button
     private lateinit var btnConnect: Button
     private lateinit var txtStatus: TextView
+    private lateinit var sliderHeightRatio: SeekBar
+    private lateinit var txtSliderHeight: TextView
+    private lateinit var backgroundView: PercentageBackgroundView
 
     private var scanning = false
     private var connecting = false
@@ -53,6 +56,9 @@ class MainActivity : ComponentActivity() {
         btnScan = findViewById(R.id.btnScan)
         btnConnect = findViewById(R.id.btnConnect)
         txtStatus = findViewById(R.id.txtStatus)
+        sliderHeightRatio = findViewById(R.id.seekBar)
+        backgroundView = findViewById(R.id.backgroundView)
+        txtSliderHeight = findViewById(R.id.txtSeekValue)
 
         btnScan.setOnClickListener {
             if (!scanning && !connecting) startScan()
@@ -74,6 +80,24 @@ class MainActivity : ComponentActivity() {
                 connectToServer(ip, port)
             }
         }
+
+        sliderHeightRatio.max = 75
+        sliderHeightRatio.setOnSeekBarChangeListener(object :
+            SeekBar.OnSeekBarChangeListener {
+
+            override fun onProgressChanged(
+                seekBar: SeekBar?,
+                progress: Int,
+                fromUser: Boolean
+            ) {
+                txtSliderHeight.text = "Slider height: ${sliderHeightRatio.progress}%"
+                backgroundView.setCoverRatio(progress / 100f)
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        sliderHeightRatio.progress = 25
         startScan()
     }
 
@@ -158,6 +182,7 @@ class MainActivity : ComponentActivity() {
             val intent = Intent(this@MainActivity, TouchActivity::class.java)
             intent.putExtra("ip", ip)
             intent.putExtra("port", port)
+            intent.putExtra("sliderHeightRatio", sliderHeightRatio.progress)
             touchActivityLauncher.launch(intent)
 
             connecting = false
