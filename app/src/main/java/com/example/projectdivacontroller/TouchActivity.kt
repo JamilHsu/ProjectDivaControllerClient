@@ -140,10 +140,10 @@ class TouchActivity : ComponentActivity() {
 
         val colors = listOf("#00DDAA", "#FF66DD", "#44AAFF", "#FF2277")
         val images = listOf(
-            R.drawable.triangle,
-            R.drawable.square,
-            R.drawable.x,
-            R.drawable.o
+            R.drawable.triangle_v,
+            R.drawable.square_v,
+            R.drawable.cross_v,
+            R.drawable.circle_v
         )
 
         // 1️⃣ 黃色區塊 (20% 高度)
