@@ -18,6 +18,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import kotlinx.coroutines.*
 import androidx.core.graphics.toColorInt
+import kotlin.math.absoluteValue
 
 class TouchActivity : ComponentActivity() {
 
@@ -26,7 +27,7 @@ class TouchActivity : ComponentActivity() {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var sliderHeightRatio = 0
     // 用來記錄上一次各 pointer 的狀態
-    private val lastTouchStates = mutableMapOf<Int, Point>() // id -> (action, x, y)
+    private val lastTouchStates = mutableMapOf<Int, Int>() // id -> (action, x)
 
     @SuppressLint("ClickableViewAccessibility", "SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,9 +82,8 @@ class TouchActivity : ComponentActivity() {
                                 event.actionIndex
                         val id = event.getPointerId(index)
                         val x = event.getX(index).toInt()
-                        val y = event.getY(index).toInt()
-                        lastTouchStates.put(id, Point(x, y))
-                        "D $id $x $y\n"
+                        lastTouchStates.put(id, x)
+                        "D $id $x ${event.getY(index).toInt()}\n"
                     }
 
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
@@ -109,10 +109,9 @@ class TouchActivity : ComponentActivity() {
                         for (i in 0 until pointerCount) {
                             val id = event.getPointerId(i)
                             val x = event.getX(i).toInt()
-                            val y = event.getY(i).toInt()
-                            if (!lastTouchStates[id]!!.equals(x, y)) {
-                                lastTouchStates[id]!!.set(x, y)
-                                sb.append(" $id $x $y")
+                            if ((lastTouchStates[id]!! - x).absoluteValue > 4) {
+                                lastTouchStates.set(id, x)
+                                sb.append(" $id $x ${event.getY(i).toInt()}")
                             }
                         }
                         if (sb.length < 4)
@@ -146,9 +145,9 @@ class TouchActivity : ComponentActivity() {
             R.drawable.circle_v
         )
 
-        // 1️⃣ 黃色區塊 (20% 高度)
+        // 1️⃣ 黃色區塊
         val yellowView = View(this).apply {
-            setBackgroundColor("#FFFF00".toColorInt())
+            setBackgroundColor("#FEFF00".toColorInt())
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 0 // 高度先設 0，後面 post 計算
