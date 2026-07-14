@@ -1,0 +1,41 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="106dp"
+    android:height="93dp"
+    android:viewportWidth="106"
+    android:viewportHeight="93">
+
+    <!-- Shadow -->
+    <path
+        android:fillColor="#64000000"
+        android:fillType="evenOdd"
+        android:pathData="
+            M58 8 L10 93 L106 93 Z
+            M58 48.67 L44.26 73 L71.74 73 Z" />
+
+    <!-- Black outline -->
+    <path
+        android:fillColor="#FEFF00"
+        android:fillType="evenOdd"
+        android:pathData="
+            M53 0 L5 85 L101 85 Z
+            M53 40.67 L39.26 65 L66.74 65 Z" />
+    <!-- Ring body -->
+    <path
+        android:fillColor="#00FFED"
+        android:fillType="evenOdd"
+        android:pathData="
+            M53 6.101 L10.14 82 L95.86 82 Z
+            M53 34.57 L34.12 68 L71.88 68 Z
+            Z" />
+    <!-- light -->
+    <path
+        android:fillColor="#74FFFD"
+        android:pathData="
+            M53 6.101
+            L22.9298293784855 59.351020532
+            A45 45 0 0 0 38.1350872251617 60.890658583837
+            L53 34.57
+            L62.5897064474 51.5500787361
+            A45 45 0 0 0 72.573689328 40.7632362645
+            Z" />
+</vector>

@@ -20,7 +20,7 @@
 
     <!-- black stroke -->
     <path
-        android:fillColor="#000000"
+        android:fillColor="#FEFF00"
         android:fillType="evenOdd"
         android:pathData="
             M50,45
@@ -34,7 +34,7 @@
 
     <!-- Ring body -->
     <path
-        android:fillColor="#FF2277"
+        android:fillColor="#FF30A6"
         android:fillType="evenOdd"
         android:pathData="
             M50,45
@@ -48,7 +48,7 @@
 
     <!-- light -->
     <path
-        android:fillColor="#FF99BB"
+        android:fillColor="#FEA7E9"
         android:pathData="
             M 8.70075041332017 52.6401559916749
             A 45 45 0 0 0 26.2503841458226 57.8435099088609

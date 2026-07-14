@@ -2,10 +2,11 @@ package com.example.projectdivacontroller
 
 import android.annotation.SuppressLint
 import android.content.res.Configuration
-import android.graphics.Point
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
-import android.util.DisplayMetrics
+import android.os.StrictMode
+import android.os.StrictMode.ThreadPolicy
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
@@ -17,8 +18,6 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import kotlinx.coroutines.*
-import androidx.core.graphics.toColorInt
-import kotlin.math.absoluteValue
 
 class TouchActivity : ComponentActivity() {
 
@@ -26,28 +25,64 @@ class TouchActivity : ComponentActivity() {
     private var tcpClient: TcpClient? = null
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var sliderHeightRatio = 0
-    // 用來記錄上一次各 pointer 的狀態
-    private val lastTouchStates = mutableMapOf<Int, Int>() // id -> (action, x)
+
+    private lateinit var divaController: DivaController
+
+    private data class LaneStyle(
+        val normalColor: Int,
+        val fullColor: Int,
+        val melodyIcon: Drawable,
+        val melodyIconSync: Drawable
+    )
+
+    private lateinit var laneStyles: Array<LaneStyle>
+
+    private lateinit var slideIconLeft: Drawable
+    private lateinit var slideIconLeftSync: Drawable
+    private lateinit var slideIconRight: Drawable
+    private lateinit var slideIconRightSync: Drawable
+
+    private lateinit var buttonViews: Array<ImageView>
+    private lateinit var sliderView: Array<ImageView>
 
     @SuppressLint("ClickableViewAccessibility", "SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_touch)
 
+        StrictMode.setThreadPolicy(
+            ThreadPolicy.Builder(StrictMode.getThreadPolicy())
+                .permitNetwork()
+                .build()
+        )
+
         // 🔹 沉浸模式設定
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val controller = WindowInsetsControllerCompat(window, window.decorView)
         controller.hide(WindowInsetsCompat.Type.systemBars())
-        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        controller.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         statusText = findViewById(R.id.statusText)
         val touchArea = findViewById<View>(R.id.touchArea)
 
-        val ip = intent.getStringExtra("ip") ?: return
-        val port = intent.getIntExtra("port", 0)
-        sliderHeightRatio = intent.getIntExtra("sliderHeightRatio",0)
+        val arg = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {// the new getXXX(key, class) APIs are buggy in Android 13
+            intent.getParcelableExtra("DivaArgs", DivaArgs::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra<DivaArgs>("DivaArgs")
+        }!!
+        sliderHeightRatio = arg.sliderHeightRatio
 
-        tcpClient = TcpClient(ip, port) {
+        divaController = DivaController(
+            sliderHeightRatio,
+            arg.sliderRequire1,
+            arg.sliderRequire2,
+            arg.energyDecayRate1,
+            arg.energyDecayRate2
+        )
+
+        tcpClient = TcpClient(arg.ip, arg.port) {
             // 若連線中斷，自動返回主畫面
             runOnUiThread {
                 statusText.text = "Disconnected"
@@ -58,157 +93,268 @@ class TouchActivity : ComponentActivity() {
         // 🔹 嘗試連線
         scope.launch(Dispatchers.IO) {
             if (tcpClient?.connect() == true) {
-                sendScreenInfo()
-                runOnUiThread {
-                    showFourSectionsWithYellowTop()
+                withContext(Dispatchers.Main) {
+                    initializeResources()
+                    initializeTouchArea()
                 }
             } else {
-                runOnUiThread {
+                withContext(Dispatchers.Main) {
                     statusText.text = "Connecting...failed"
                     finishWithResult(RESULT_CONNECT_FAILED)
                 }
             }
         }
 
-
         touchArea.setOnTouchListener { _, event ->
-            val msg: String? =
-                when(event.actionMasked) {
-                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                        val index =
-                            if (event.actionMasked == MotionEvent.ACTION_DOWN)
-                                0
-                            else
-                                event.actionIndex
-                        val id = event.getPointerId(index)
-                        val x = event.getX(index).toInt()
-                        lastTouchStates.put(id, x)
-                        "D $id $x ${event.getY(index).toInt()}\n"
-                    }
-
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
-                        val index =
-                            if (event.actionMasked == MotionEvent.ACTION_UP)
-                                0
-                            else
-                                event.actionIndex
-                        val id = event.getPointerId(index)
-                        lastTouchStates.remove(id)
-                        "U $id\n"
-                    }
-
-                    MotionEvent.ACTION_CANCEL -> {
-                        lastTouchStates.clear()
-                        "C\n"
-                    }
-
-                    MotionEvent.ACTION_MOVE -> {
-                        val sb = StringBuilder()
-                        sb.append("M")
-                        val pointerCount = event.pointerCount
-                        for (i in 0 until pointerCount) {
-                            val id = event.getPointerId(i)
-                            val x = event.getX(i).toInt()
-                            if ((lastTouchStates[id]!! - x).absoluteValue > 4) {
-                                lastTouchStates.set(id, x)
-                                sb.append(" $id $x ${event.getY(i).toInt()}")
-                            }
-                        }
-                        if (sb.length < 4)
-                            null
-                        else {
-                            sb.append("\n")
-                            sb.toString()
-                        }
-                    }
-
-                    else -> null
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                    val index =
+                        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                            divaController.lastUpdate = event.eventTime
+                            0
+                        } else
+                            event.actionIndex
+                    divaController.onPointerDown(
+                        event.getPointerId(index),
+                        event.getX(index),
+                        event.getY(index),
+                        event.eventTime
+                    )
                 }
 
-            if (msg!=null) {
-                tcpClient?.send(msg)
-            }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
+                    val index =
+                        if (event.actionMasked == MotionEvent.ACTION_UP) {
+                            0
+                        } else
+                            event.actionIndex
+                    divaController.onPointerUp(
+                        event.getPointerId(index),
+                        event.eventTime
+                    )
+                }
 
+                MotionEvent.ACTION_CANCEL -> {
+                    divaController.reset()
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val pointerCount = event.pointerCount
+                    for (i in 0 until pointerCount) {
+                        divaController.onPointerMove(
+                            event.getPointerId(i),
+                            event.getX(i),
+                            event.getY(i),
+                            event.eventTime
+                        )
+                    }
+                    divaController.lastUpdate = event.eventTime
+                }
+            }
+            if (divaController.keybdOutput.position() > 0) {
+                tcpClient?.send(divaController.keybdOutput)
+                divaController.keybdOutput.clear()
+                updateViewContent()
+            }
             true
         }
-
     }
-    private fun showFourSectionsWithYellowTop() {
-        val root = findViewById<FrameLayout>(R.id.touchArea)
-        root.removeAllViews()
 
-        val colors = listOf("#00DDAA", "#FF66DD", "#44AAFF", "#FF2277")
-        val images = listOf(
-            R.drawable.triangle_v,
-            R.drawable.square_v,
-            R.drawable.cross_v,
-            R.drawable.circle_v
+    private fun initializeResources() {
+        laneStyles = arrayOf(
+            LaneStyle(
+                0xD800DDAA.toInt(),
+                0xFF00DDAA.toInt(),
+                getDrawable(
+                    R.drawable.triangle_v
+                )!!,
+                getDrawable(
+                    R.drawable.triangle_sync_v
+                )!!
+            ),
+            LaneStyle(
+                0xD8FF66DD.toInt(),
+                0xFFFF66DD.toInt(),
+                getDrawable(
+                    R.drawable.square_v
+                )!!,
+                getDrawable(
+                    R.drawable.square_sync_v
+                )!!
+            ),
+            LaneStyle(
+                0xD844AAFF.toInt(),
+                0xFF44AAFF.toInt(),
+                getDrawable(
+                    R.drawable.cross_v
+                )!!,
+                getDrawable(
+                    R.drawable.cross_sync_v
+                )!!
+            ),
+            LaneStyle(
+                0xD8FF2277.toInt(),
+                0xFFFF2277.toInt(),
+                getDrawable(
+                    R.drawable.circle_v
+                )!!,
+                getDrawable(
+                    R.drawable.circle_sync_v
+                )!!
+            )
         )
 
-        // 1️⃣ 黃色區塊
-        val yellowView = View(this).apply {
-            setBackgroundColor("#FEFF00".toColorInt())
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                0 // 高度先設 0，後面 post 計算
-            )
+        slideIconLeft =
+            getDrawable(
+                R.drawable.slide_left
+            )!!
+        slideIconLeftSync =
+            getDrawable(
+                R.drawable.slide_left_sync
+            )!!
+        slideIconRight =
+            getDrawable(
+                R.drawable.slide_right
+            )!!
+        slideIconRightSync =
+            getDrawable(
+                R.drawable.slide_right_sync
+            )!!
+    }
+
+    private fun createImageView(): ImageView =
+        ImageView(this).apply {
+
+            layoutParams =
+                LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    1f
+                )
+
+            scaleType = ImageView.ScaleType.FIT_CENTER
+
+            adjustViewBounds = true
         }
 
+    private fun initializeTouchArea() {
 
-        // 2️⃣ 四等分水平 LinearLayout
-        val layout = LinearLayout(this).apply {
+        val root = findViewById<FrameLayout>(R.id.touchArea)
+
+        root.removeAllViews()
+
+        val sliderLayout = LinearLayout(this).apply {
+
             orientation = LinearLayout.HORIZONTAL
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
+
+            layoutParams =
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                )
+        }
+
+        sliderView = Array(2) {
+
+            createImageView().also {
+
+                it.setBackgroundColor(0xD8FEFF00.toInt())
+
+                sliderLayout.addView(it)
+            }
+        }
+
+        val buttonLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+
+            layoutParams =
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                )
+        }
+
+        buttonViews = Array(4) {
+            createImageView().also(
+                buttonLayout::addView
             )
         }
 
-        for (i in 0 until 4) {
-            val iv = ImageView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
-                setBackgroundColor(colors[i].toColorInt())
-                setImageResource(images[i])
-                scaleType = ImageView.ScaleType.FIT_CENTER
-                adjustViewBounds = true
-            }
-            layout.addView(iv)
-        }
+        root.addView(buttonLayout)
+        root.addView(sliderLayout)
 
-        root.addView(layout)
-        root.addView(yellowView)
-        // 3️⃣ 計算高度
         root.post {
-            val yellowHeight = (root.height * sliderHeightRatio / 100)
+            val sliderHeight = root.height * sliderHeightRatio / 100
+            (sliderLayout.layoutParams
+                    as FrameLayout.LayoutParams)
+                .apply {
+                    bottomMargin = root.height - sliderHeight
+                }
+            sliderLayout.requestLayout()
+            (buttonLayout.layoutParams
+                    as FrameLayout.LayoutParams)
+                .apply {
+                    topMargin = sliderHeight
+                }
+            buttonLayout.requestLayout()
 
-            // 設定黃色高度
-            yellowView.layoutParams.height = yellowHeight
-            yellowView.requestLayout()
-
-            // 讓四等分 layout 下移
-            val lp = layout.layoutParams as FrameLayout.LayoutParams
-            lp.topMargin = yellowHeight
-            layout.layoutParams = lp
+            divaController.setSize(root.width, root.height)
         }
-
+        updateViewContent()
     }
 
+    private fun updateViewContent() {
 
-    private fun sendScreenInfo() {
-        @Suppress("DEPRECATION")
-        val display = windowManager.defaultDisplay
-        val displayMetrics = DisplayMetrics()
-        display.getRealMetrics(displayMetrics)
-        val width = displayMetrics.widthPixels
-        val height = displayMetrics.heightPixels
-        val xdpi = displayMetrics.xdpi
-        val ydpi = displayMetrics.ydpi
-        val manufacturer = Build.MANUFACTURER   // 例如 "Samsung"
-        val model = Build.MODEL                 // 例如 "SM-G9980"
-        val msg = "SCREEN: $width $height $xdpi $ydpi $sliderHeightRatio $manufacturer $model\n"
-        tcpClient?.send(msg)
+        val buttons = divaController.keybdState.buttons
+
+        for (lane in 0 until 4) {
+
+            val primary = buttons[lane]
+
+            val secondary = buttons[lane + 4]
+
+            val style = laneStyles[lane]
+
+            buttonViews[lane].setBackgroundColor(
+                if (primary && secondary)
+                    style.fullColor
+                else
+                    style.normalColor
+            )
+
+            buttonViews[lane].setImageDrawable(
+                if (primary || secondary)
+                    style.melodyIconSync
+                else
+                    style.melodyIcon
+            )
+        }
+        if (divaController.keybdState.sticks[0] != 0 && divaController.keybdState.sticks[1] != 0) {
+            sliderView[0].setImageDrawable(
+                if (divaController.keybdState.sticks[0] > 0) slideIconRightSync
+                else slideIconLeftSync
+            )
+            sliderView[1].setImageDrawable(
+                if (divaController.keybdState.sticks[1] > 0) slideIconRightSync
+                else slideIconLeftSync
+            )
+        } else {
+            sliderView[0].setImageDrawable(
+                when (divaController.keybdState.sticks[0]) {
+                    0 -> null
+                    1 -> slideIconRight
+                    else -> slideIconLeft
+                }
+            )
+            sliderView[1].setImageDrawable(
+                when (divaController.keybdState.sticks[1]) {
+                    0 -> null
+                    2 -> slideIconRight
+                    else -> slideIconLeft
+                }
+            )
+        }
     }
-
 
     private fun finishWithResult(result: Int) {
         setResult(result)
@@ -220,9 +366,9 @@ class TouchActivity : ComponentActivity() {
         tcpClient?.close()
         scope.cancel()
     }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        showFourSectionsWithYellowTop()
-        sendScreenInfo()
+        initializeTouchArea()
     }
 }
