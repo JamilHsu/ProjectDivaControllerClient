@@ -4,4 +4,4 @@
 有一個自動搜尋伺服器(電腦端)IP位址的按鈕，不過並不是在所有情況下都有效，此時就必須自行手動輸入IP。  
 更多詳細資訊請參閱[ProjectDivaControllerServer](https://github.com/JamilHsu/ProjectDivaControllerServer)
 
-![image](https://truth.bahamut.com.tw/s01/202511/forum/38519/4032d1a673883e55d6fdbdf129e8a267.JPG)
+![image](https://raw.githubusercontent.com/JamilHsu/ProjectDivaControllerClient/refs/heads/master/ProjectDivaControllerClient2%E9%81%8B%E4%BD%9C%E7%95%AB%E9%9D%A2.jpg)
