@@ -9,6 +9,7 @@ import android.os.Parcelable
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Patterns
+import android.view.HapticFeedbackConstants
 import android.widget.*
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
@@ -31,7 +32,8 @@ data class DivaArgs(
     val sliderRequire1: Float,
     val sliderRequire2: Float,
     val energyDecayRate1: Float,
-    val energyDecayRate2: Float
+    val energyDecayRate2: Float,
+    val vibrationOn: Boolean
 ) : Parcelable
 
 @SuppressLint("SetTextI18n")
@@ -48,6 +50,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var editEnergyDecayRate2: EditText
     private lateinit var btnScan: Button
     private lateinit var btnConnect: Button
+    private lateinit var btnVibration: Button
     private lateinit var btnSave: Button
     private lateinit var txtStatus: TextView
     private lateinit var txtOtherMsg: TextView
@@ -55,6 +58,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var txtSliderHeight: TextView
     private lateinit var backgroundView: PercentageBackgroundView
     private lateinit var displayManager: DisplayManager
+    private lateinit var prefs: android.content.SharedPreferences
     private val displayListener = object : DisplayManager.DisplayListener {
         override fun onDisplayAdded(displayId: Int) {}
         override fun onDisplayRemoved(displayId: Int) {}
@@ -80,6 +84,19 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private var vibrationOn = true
+        set(value) {
+            field = value
+            btnVibration.setText(
+                if (value) {
+                    backgroundView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    "Vibration: On"
+                } else {
+                    "Vibration: Off"
+                }
+            )
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -92,6 +109,7 @@ class MainActivity : ComponentActivity() {
         editEnergyDecayRate2 = findViewById(R.id.energyDecayRate2)
         btnScan = findViewById(R.id.btnScan)
         btnConnect = findViewById(R.id.btnConnect)
+        btnVibration = findViewById(R.id.btnVibration)
         btnSave = findViewById(R.id.btnSave)
         txtStatus = findViewById(R.id.txtStatus)
         txtOtherMsg = findViewById(R.id.txtOtherMsg)
@@ -138,7 +156,8 @@ class MainActivity : ComponentActivity() {
                     sliderRequire1,
                     sliderRequire2,
                     energyDecayRate1,
-                    energyDecayRate2
+                    energyDecayRate2,
+                    vibrationOn
                 )
             )
             touchActivityLauncher.launch(intent)
@@ -198,20 +217,20 @@ class MainActivity : ComponentActivity() {
                 backgroundView.vx2 = s.toString().toFloatOrNull()
             }
         })
-        val prefs = getSharedPreferences("DivaPrefs", MODE_PRIVATE)
+
+        btnVibration.setOnClickListener { vibrationOn = !vibrationOn }
+
+        prefs = getSharedPreferences("DivaPrefs", MODE_PRIVATE)!!
+
         sliderHeightRatio.progress = prefs.getInt("A", 25)
         editSliderRequire1.setText(prefs.getString("B", "39.0"))
         editSliderRequire2.setText(prefs.getString("C", "78.0"))
         editEnergyDecayRate1.setText(prefs.getString("D", "3.9"))
         editEnergyDecayRate2.setText(prefs.getString("E", "3.9"))
+        vibrationOn = prefs.getBoolean("F", true)
         btnSave.setOnClickListener {
-            prefs.edit {
-                putInt("A", sliderHeightRatio.progress)
-                    .putString("B", editSliderRequire1.text.toString())
-                    .putString("C", editSliderRequire2.text.toString())
-                    .putString("D", editEnergyDecayRate1.text.toString())
-                    .putString("E", editEnergyDecayRate2.text.toString())
-            }
+            savePrefs()
+            if (vibrationOn) backgroundView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             backgroundView.showMove1()
             backgroundView.showMove2()
         }
@@ -232,6 +251,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         displayManager.unregisterDisplayListener(displayListener)
+        savePrefs()
     }
 
     override fun onResume() {
@@ -374,6 +394,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun savePrefs() {
+        prefs.edit {
+            putInt("A", sliderHeightRatio.progress)
+                .putString("B", editSliderRequire1.text.toString())
+                .putString("C", editSliderRequire2.text.toString())
+                .putString("D", editEnergyDecayRate1.text.toString())
+                .putString("E", editEnergyDecayRate2.text.toString())
+                .putBoolean("F", vibrationOn)
+        }
+    }
 }
 
 data class IpRangeResult(

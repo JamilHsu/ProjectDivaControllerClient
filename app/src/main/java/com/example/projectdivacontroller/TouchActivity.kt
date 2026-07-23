@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.StrictMode
 import android.os.StrictMode.ThreadPolicy
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
@@ -66,12 +67,13 @@ class TouchActivity : ComponentActivity() {
         statusText = findViewById(R.id.statusText)
         val touchArea = findViewById<View>(R.id.touchArea)
 
-        val arg = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {// the new getXXX(key, class) APIs are buggy in Android 13
-            intent.getParcelableExtra("DivaArgs", DivaArgs::class.java)
-        } else {
-            @Suppress("DEPRECATION")
-            intent.getParcelableExtra<DivaArgs>("DivaArgs")
-        }!!
+        val arg =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {// the new getXXX(key, class) APIs are buggy in Android 13
+                intent.getParcelableExtra("DivaArgs", DivaArgs::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra<DivaArgs>("DivaArgs")
+            }!!
         sliderHeightRatio = arg.sliderHeightRatio
 
         divaController = DivaController(
@@ -81,6 +83,8 @@ class TouchActivity : ComponentActivity() {
             arg.energyDecayRate1,
             arg.energyDecayRate2
         )
+
+        touchArea.isHapticFeedbackEnabled = arg.vibrationOn
 
         tcpClient = TcpClient(arg.ip, arg.port) {
             // 若連線中斷，自動返回主畫面
@@ -105,7 +109,8 @@ class TouchActivity : ComponentActivity() {
             }
         }
 
-        touchArea.setOnTouchListener { _, event ->
+        touchArea.setOnTouchListener { view, event ->
+            var hapticEffects: Int? = null
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                     val index =
@@ -114,12 +119,15 @@ class TouchActivity : ComponentActivity() {
                             0
                         } else
                             event.actionIndex
-                    divaController.onPointerDown(
-                        event.getPointerId(index),
-                        event.getX(index),
-                        event.getY(index),
-                        event.eventTime
-                    )
+                    if (divaController.onPointerDown(
+                            event.getPointerId(index),
+                            event.getX(index),
+                            event.getY(index),
+                            event.eventTime
+                        )
+                    ) {
+                        hapticEffects = HapticFeedbackConstants.KEYBOARD_TAP
+                    }
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
@@ -136,17 +144,27 @@ class TouchActivity : ComponentActivity() {
 
                 MotionEvent.ACTION_CANCEL -> {
                     divaController.reset()
+                    hapticEffects = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        HapticFeedbackConstants.REJECT
+                    } else {
+                        HapticFeedbackConstants.LONG_PRESS
+                    }
                 }
 
                 MotionEvent.ACTION_MOVE -> {
                     val pointerCount = event.pointerCount
                     for (i in 0 until pointerCount) {
-                        divaController.onPointerMove(
-                            event.getPointerId(i),
-                            event.getX(i),
-                            event.getY(i),
-                            event.eventTime
-                        )
+                        if (divaController.onPointerMove(
+                                event.getPointerId(i),
+                                event.getX(i),
+                                event.getY(i),
+                                event.eventTime
+                            )
+                        ) {
+                            hapticEffects = HapticFeedbackConstants.LONG_PRESS
+                        } else if (divaController.keybdState.sticks[0] != 0 || divaController.keybdState.sticks[1] != 0) {
+                            hapticEffects = HapticFeedbackConstants.CLOCK_TICK
+                        }
                     }
                     divaController.lastUpdate = event.eventTime
                 }
@@ -155,6 +173,9 @@ class TouchActivity : ComponentActivity() {
                 tcpClient?.send(divaController.keybdOutput)
                 divaController.keybdOutput.clear()
                 updateViewContent()
+            }
+            if (hapticEffects != null) {
+                view.performHapticFeedback(hapticEffects)
             }
             true
         }

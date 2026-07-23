@@ -8,7 +8,8 @@
     <com.example.projectdivacontroller.PercentageBackgroundView
         android:id="@+id/backgroundView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:hapticFeedbackEnabled="true"/>
 
     <!-- UI（疊在上面） -->
     <ScrollView
@@ -192,6 +193,11 @@
                 android:text="pixel/ms"
                 tools:ignore="HardcodedText" />
         </LinearLayout>
+        <Button
+            android:id="@+id/btnVibration"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAllCaps="false"/>
         <Button
             android:id="@+id/btnSave"
             android:layout_width="match_parent"

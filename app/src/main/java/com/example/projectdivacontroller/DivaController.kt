@@ -62,10 +62,10 @@ class DivaController(
         x: Float,
         y: Float,
         timestamp: Long
-    ) {
+    ): Boolean {
 
         if (pointerId !in pointerCache.indices) {
-            return
+            return false
         }
 
         if (pointerCache[pointerId] != null) {
@@ -84,7 +84,7 @@ class DivaController(
 
         if (y < sliderHeight) {
             info.inSliderOnly = true
-            return
+            return false
         }
 
         var buttonIndex = (x * 4f / width).toInt().coerceIn(0, 3)
@@ -93,7 +93,7 @@ class DivaController(
             keybdState.buttons[buttonIndex] &&
             keybdState.buttons[buttonIndex + 4]
         ) {
-            return
+            return false
         }
 
         if (keybdState.buttons[buttonIndex]
@@ -105,6 +105,7 @@ class DivaController(
         keybdState.buttons[buttonIndex] = true
         keybdOutput.put('D'.code.toByte()).put(buttonIndex.toByte())
         info.pressingButton = buttonIndex + 1
+        return true
     }
 
     fun onPointerUp(
@@ -149,15 +150,15 @@ class DivaController(
         x: Float,
         y: Float,
         timestamp: Long
-    ) {
+    ): Boolean {
         if (pointerId !in pointerCache.indices) {
-            return
+            return false
         }
 
         val dt = timestamp - lastUpdate
         val info =
             pointerCache[pointerId]
-                ?: return
+                ?: return false
 
         val dx = x - info.x
         val dy = y - info.y
@@ -195,14 +196,14 @@ class DivaController(
         }
 
         if (info.pressingDirectionalButton != 0) {
-            return
+            return false
         }
 
         val stickId =
             when {
                 (keybdState.sticks[0] == 0 && (x * 2 < width || keybdState.sticks[1] != 0)) -> 1
                 keybdState.sticks[1] == 0 -> 2
-                else -> return
+                else -> return false
             }
 
         if (abs(info.slideEnergy) >= sliderRequire) {
@@ -217,7 +218,9 @@ class DivaController(
 
             info.pressingDirectionalButton = direction
             keybdOutput.put('d'.code.toByte()).put(direction.toByte())
+            return true
         }
+        return false
     }
 
     fun reset() {
